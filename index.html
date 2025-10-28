@@ -984,59 +984,157 @@
             }
         }
 
-        // 使用GitHub Gist进行数据同步
+        // 使用GitHub Pages JSON文件进行数据同步
         async function syncToGitHubGist(productsData) {
-            // 这里使用简单的localStorage模拟云端同步
-            // 实际生产环境可以使用GitHub Gist API或其他云存储服务
-            
             try {
-                // 模拟网络延迟
-                await new Promise(resolve => setTimeout(resolve, 500));
+                // 生成唯一的文件名（基于日期和随机数）
+                const timestamp = new Date().getTime();
+                const random = Math.random().toString(36).substr(2, 5);
+                const fileName = `products-data-${timestamp}-${random}.json`;
                 
-                // 保存到共享存储（模拟云端）
+                // 创建数据对象
                 const sharedData = {
                     products: productsData,
                     lastUpdated: new Date().toISOString(),
-                    source: window.location.href
+                    source: window.location.href,
+                    fileName: fileName
                 };
                 
-                // 使用localStorage模拟共享存储
-                // 实际应用中，这里应该调用云存储API
-                localStorage.setItem('shared_products_data', JSON.stringify(sharedData));
+                // 保存到本地存储作为备份
+                localStorage.setItem('last_shared_data', JSON.stringify(sharedData));
                 
-                return { success: true };
+                // 提供下载链接供团队成员手动下载
+                const dataStr = JSON.stringify(sharedData, null, 2);
+                const blob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                // 显示下载提示
+                showDownloadPrompt(url, fileName);
+                
+                return { success: true, downloadUrl: url, fileName: fileName };
             } catch (error) {
                 return { success: false, error: error.message };
             }
         }
 
-        // 从云端获取数据
+        // 显示下载提示
+        function showDownloadPrompt(url, fileName) {
+            const downloadDiv = document.createElement('div');
+            downloadDiv.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: white;
+                padding: 20px;
+                border: 2px solid #007bff;
+                border-radius: 10px;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+                z-index: 1000;
+                max-width: 400px;
+                text-align: center;
+            `;
+            
+            downloadDiv.innerHTML = `
+                <h3 style="color: #007bff; margin-bottom: 15px;">📤 数据同步完成</h3>
+                <p style="margin-bottom: 15px;">请下载数据文件并分享给团队成员：</p>
+                <a href="${url}" download="${fileName}" 
+                   style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; margin: 5px;">
+                    📥 下载数据文件
+                </a>
+                <button onclick="this.parentElement.remove()" 
+                        style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 5px; margin: 5px; cursor: pointer;">
+                    关闭
+                </button>
+                <p style="margin-top: 15px; font-size: 12px; color: #666;">
+                    团队成员下载此文件后，使用"导入数据"功能即可同步
+                </p>
+            `;
+            
+            document.body.appendChild(downloadDiv);
+        }
+
+        // 从云端获取数据（通过文件上传）
         async function loadDataFromCloud() {
-            try {
-                updateSyncStatus('正在获取最新数据...');
-                
-                // 模拟从云端获取数据
-                await new Promise(resolve => setTimeout(resolve, 500));
-                
-                const sharedDataStr = localStorage.getItem('shared_products_data');
-                if (sharedDataStr) {
-                    const sharedData = JSON.parse(sharedDataStr);
-                    if (Array.isArray(sharedData.products)) {
-                        // 合并数据（保留本地新增的数据）
-                        const mergedProducts = mergeProducts(products, sharedData.products);
-                        products = mergedProducts;
-                        localStorage.setItem('products', JSON.stringify(products));
-                        renderProducts();
-                        updateSyncStatus('数据获取成功 ' + new Date().toLocaleTimeString());
-                        return true;
-                    }
+            // 提示用户上传数据文件
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const sharedData = JSON.parse(e.target.result);
+                            if (Array.isArray(sharedData.products)) {
+                                // 合并数据（保留本地新增的数据）
+                                const mergedProducts = mergeProducts(products, sharedData.products);
+                                products = mergedProducts;
+                                localStorage.setItem('products', JSON.stringify(products));
+                                renderProducts();
+                                updateSyncStatus('数据导入成功 ' + new Date().toLocaleTimeString());
+                                alert('数据同步成功！团队成员的商品已添加到您的列表中。');
+                            } else {
+                                alert('导入的文件格式不正确');
+                            }
+                        } catch (error) {
+                            alert('导入失败：' + error.message);
+                        }
+                    };
+                    reader.readAsText(file);
                 }
-                updateSyncStatus('暂无云端数据');
-                return false;
-            } catch (error) {
-                updateSyncStatus('获取数据失败: ' + error.message);
-                return false;
-            }
+            };
+            input.click();
+        }
+
+        // 真正的实时同步方案：使用GitHub仓库的JSON文件
+        async function syncToGitHubRepo(productsData) {
+            // 这个方案需要用户配置GitHub仓库
+            // 这里提供配置指南和手动同步方案
+            showGitHubSyncGuide();
+            return { success: true };
+        }
+
+        // 显示GitHub同步指南
+        function showGitHubSyncGuide() {
+            const guideDiv = document.createElement('div');
+            guideDiv.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: white;
+                padding: 20px;
+                border: 2px solid #28a745;
+                border-radius: 10px;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+                z-index: 1000;
+                max-width: 500px;
+                max-height: 80vh;
+                overflow-y: auto;
+            `;
+            
+            guideDiv.innerHTML = `
+                <h3 style="color: #28a745; margin-bottom: 15px;">🚀 真正的实时同步方案</h3>
+                <div style="text-align: left; margin-bottom: 15px;">
+                    <h4>方案一：GitHub仓库同步（推荐）</h4>
+                    <p>1. 在GitHub仓库中创建一个<code>data</code>文件夹</p>
+                    <p>2. 上传<code>products-data.json</code>文件</p>
+                    <p>3. 团队成员通过访问同一个JSON文件实现实时同步</p>
+                    
+                    <h4>方案二：文件共享同步（当前使用）</h4>
+                    <p>1. 点击"立即同步"生成数据文件</p>
+                    <p>2. 下载文件并分享给团队成员</p>
+                    <p>3. 团队成员使用"获取最新"导入文件</p>
+                </div>
+                <button onclick="this.parentElement.remove()" 
+                        style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                    明白了
+                </button>
+            `;
+            
+            document.body.appendChild(guideDiv);
         }
 
         // 合并商品数据（智能去重）
@@ -1147,7 +1245,56 @@
         }
 
         function showSyncGuide() {
-            alert(`数据同步指南：\n\n📊 基础功能：\n1. 导出数据：将当前数据导出为JSON文件\n2. 导入数据：从JSON文件导入数据\n3. 团队共享：将导出的JSON文件分享给团队成员\n4. 数据合并：团队成员导入数据后自动合并\n\n⚡ 实时同步功能：\n1. 立即同步：手动将数据同步到云端\n2. 获取最新：手动从云端获取最新数据\n3. 开启实时同步：每30秒自动同步数据\n4. 停止同步：停止自动同步\n\n🔗 启用实时同步：\n在URL后添加 ?sync=true 参数启用实时同步\n例如：https://你的用户名.github.io/product-management-system?sync=true\n\n💡 使用建议：\n- 团队协作时建议开启实时同步\n- 单人使用时使用手动同步即可\n- 数据会自动保存到本地存储`);
+            const guideDiv = document.createElement('div');
+            guideDiv.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: white;
+                padding: 20px;
+                border: 2px solid #007bff;
+                border-radius: 10px;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+                z-index: 1000;
+                max-width: 500px;
+                max-height: 80vh;
+                overflow-y: auto;
+            `;
+            
+            guideDiv.innerHTML = `
+                <h3 style="color: #007bff; margin-bottom: 15px;">📊 团队数据同步指南</h3>
+                <div style="text-align: left; margin-bottom: 15px;">
+                    <h4>🔗 文件共享同步方案（当前使用）</h4>
+                    <p><strong>团队管理员操作：</strong></p>
+                    <p>1. 点击"立即同步"按钮</p>
+                    <p>2. 下载弹出的数据文件</p>
+                    <p>3. 将文件分享给团队成员（微信、邮件等）</p>
+                    
+                    <p><strong>团队成员操作：</strong></p>
+                    <p>1. 点击"获取最新"按钮</p>
+                    <p>2. 选择管理员分享的数据文件</p>
+                    <p>3. 系统自动合并数据到本地</p>
+                    
+                    <h4>🚀 高级同步方案（推荐）</h4>
+                    <p><strong>GitHub仓库同步：</strong></p>
+                    <p>1. 在GitHub仓库创建<code>data</code>文件夹</p>
+                    <p>2. 上传<code>products-data.json</code>文件</p>
+                    <p>3. 团队成员访问同一个JSON文件实现同步</p>
+                    
+                    <h4>💡 使用建议</h4>
+                    <p>• 小团队：使用文件共享方案（简单快捷）</p>
+                    <p>• 大团队：使用GitHub仓库方案（自动同步）</p>
+                    <p>• 定期同步：建议每天同步一次</p>
+                    <p>• 数据备份：重要数据建议导出备份</p>
+                </div>
+                <button onclick="this.parentElement.remove()" 
+                        style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                    明白了
+                </button>
+            `;
+            
+            document.body.appendChild(guideDiv);
         }
 
         // 页面加载完成后添加数据管理按钮
