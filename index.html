@@ -851,18 +851,18 @@
                 }
 
                 // 保存到本地存储
-        localStorage.setItem('products', JSON.stringify(products));
-        
-        // 尝试同步到GitHub（如果配置了仓库）
-        syncToGitHub(products);
-        
-        // 重新渲染列表
-        renderProducts();
-        
-        // 关闭模态框
-        closeModal();
-        
-        alert('商品保存成功！');
+                localStorage.setItem('products', JSON.stringify(products));
+                
+                // 尝试同步到云端
+                syncDataToCloud();
+                
+                // 重新渲染列表
+                renderProducts();
+                
+                // 关闭模态框
+                closeModal();
+                
+                alert('商品保存成功！');
             }
         }
 
